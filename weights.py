@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse import sparray, diags
 from typing import Sequence, Iterable
 
 from combin import rank_to_comb, comb_to_rank
@@ -18,4 +19,13 @@ def optimal_weights(simplices: Sequence, weights: Iterable = None) -> np.ndarray
   weights = np.fromiter(weights, dtype=np.float64)
   return weights 
 
-optimal_weights(*d.items())
+
+def diffusion(A: sparray, timepoints: np.ndarray, v0: np.ndarray = None):
+  assert isinstance(A, sparray) and A.shape[0] == A.shape[1], "Adjacency matrix must be square and sparse"
+  
+  ## Form the graph Laplacian
+  deg = (A @ np.ones(A.shape[1])).ravel()
+  L = diags(deg) - A
+
+  ## 
+  np.linalg.eigh()
