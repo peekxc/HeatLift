@@ -94,7 +94,7 @@ np.add.at(E_weights, E_author_card.row, _E_weights)
 E_weights_true = np.loadtxt("https://raw.githubusercontent.com/DedeBac/WeightedSimplicialComplexes/main/edgelist_weighted.txt", delimiter=",")
 assert np.allclose(E_weights_true[:,2], E_weights)
 
-## The wedge and triangle weights are correct, but adding edge weights per node does not add correctly 
+## The edge and triangle weights are correct, but adding edge weights per node does not add correctly 
 E.sort(axis=1)
 EW_map = dict(zip(map(tuple, E), E_weights))
 node_weights = np.array([np.sum([EW_map[tuple(e)] for e in st.cofaces([n]) if len(e) == 2]) for n in st.vertices])

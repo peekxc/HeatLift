@@ -10,7 +10,7 @@ def read_hgf(file: str):
 
 # (n,m), hyperedges = read_hgf("data/algebra.hgf")
 
-def got_hg():
+def game_of_thrones():
   """Loads the Game of Thrones character/scene hypergraph"""
   with open("data/hg_season1.json", "r") as f:
     hg_s1 = json.load(f)
