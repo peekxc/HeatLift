@@ -128,18 +128,8 @@ st, weights = top_weights(T, T_weights)
 e_weights = np.array([w for s, w in weights.items() if len(s) == 2])
 Counter(e_weights)
 
-e1 = np.searchsorted(node_ids, [57194375466,57211365771])
-# 268, 323 => 0.2
-st.cofaces([268,323])
 
 
-def read_hgf(file: str):
-  with open(file, "r") as file:
-    lines = [line.rstrip() for line in file]
-  n, m = map(int, lines[0].split(' '))
-  return (n,m), [[int(i.split("=")[0]) for i in L.split(" ")] for L in lines[1:]]
-
-(n,m), hyperedges = read_hgf("data/algebra.hgf")
 
 from collections import Counter
 ## Stores, for each hyper-edge h, a dict (k,v) representing h participating in v papers having k total authors 
@@ -150,7 +140,96 @@ for i, he in enumerate(hyperedges):
   collab_sizes.append(dict(Counter(C1 + C2)))
   print(i)
 
+## Goals, given hyper edges: 
+## 1. Deduce unique p-simplices 
+## 2. Count how many times hyperedges they contain 
+## 3. Get the sizes of their hyperedges, convert to matrix form 
+
+## Step 1
+def unique_simplices(H: list, p: int):
+  import itertools as it
+  st = SimplexTree()
+  for h in hyperedges:
+    if len(h) >= (p+1):
+      st.insert(it.combinations(h, p+1))
+  return st.faces(p)
+
+## Assumes hyper edge indices are 0-based + mapped to index set
+m = len(hyperedges)
+n = np.max([np.max(h) for h in hyperedges])
+H = np.zeros(shape=(m,n), dtype=bool)
+for i, h in enumerate(hyperedges):
+  H[i,h] = True
+
 from math import comb
 np.sum([comb(len(h),2) for h in hyperedges])
 np.sum([comb(len(h),3) for h in hyperedges])
 hyperedges[0]
+
+
+## Incidence matrix of the character / scene hyper graph
+n_scenes = np.max([max(s) for s in char2scene.values()]) + 1
+H = np.zeros((len(characters), n_scenes), dtype=bool)
+for i, (char, scenes) in enumerate(char2scene.items()):
+  H[i,scenes] = True
+
+
+#
+triangles = np.array(list(S))
+triangles.sort(axis=1)
+
+st = SimplexTree()
+st.insert(triangles)
+
+
+## Redoing step 1: get unique edges
+from scipy.sparse import find, coo_array
+I,J = np.unravel_index(np.flatnonzero(H @ H.T), shape=[H.shape[0]]*2, order='C')
+edges = np.c_[I[I != J], J[I != J]]
+edges.sort(axis=1)
+edges = np.unique(edges, axis=0)
+
+## Number of edges where a pair of characters share at least one scene
+## This can also be used to find unique edges, though it does involve all combinations
+np.sum([np.any(H[i,:] & H[j,:]) for i,j in it.combinations(range(H.shape[0]), 2)])
+
+## Multiply upper triangle matrix with itself to find common triangles
+C = H @ H.T
+np.fill_diagonal(C, 0)
+# C_upper = np.triu(C, k=1)
+triangle_tensor = np.einsum('ij,jk,ki->ijk', C, C, C)
+triangles = np.argwhere(triangle_tensor > 0)
+triangles.sort(axis=1)
+triangles = np.unique(triangles, axis=0)
+print(triangles.shape)
+
+## This counts triangles, matches einsum
+(1/6)*np.trace(C.astype(int) @ C.astype(int) @ C.astype(int))
+
+## It is unclear why this is lower
+np.sum([np.any(H[i,:] & H[j,:] & H[k,:]) for i,j,k in it.combinations(range(H.shape[0]), 3)])
+np.sum([np.any(C[i,:] & C[j,:] & C[k,:]) for i,j,k in it.combinations(range(H.shape[0]), 3)])
+
+import timeit
+len(unique_simplices(hyperedges, 2))
+
+unique_simplices
+
+A = np.array([[1,0,0,0],[1,1,0,0],[1,1,1,0],[0,0,0,1],[0,0,1,0],[0,0,1,0], [0,0,0,0]])
+C = A @ A.T
+np.fill_diagonal(C, 0)
+
+len(unique_simplices(hyperedges, 1))
+
+
+## Get the characters in the 15th scene
+[c for c,s in char2scene.items() if 15 in s]
+
+## n = number of characters 
+## k = number of seasons
+m = np.array(list(map(lambda x: True if x == 'true' else False, hg_s1['m'].strip("[]").split(","))))
+v2he = eval(hg_s1['v2he'].replace("true", "True"))
+
+chars = eval(hg_s1['v_meta'])
+
+hg_s1 = json.loads("data/keyValues.json")
