@@ -93,8 +93,8 @@ def edges_to_incidence(H: list) -> sparray:
     J.extend(he)
     I.extend(np.full(len(he), i))
     X.extend(np.ones(len(he)))
-  return coo_array((X, (I,J)), shape=(len(H), np.max(J) + 1))
-  # raise NotImplementedError("Not implemented yet")
+  H = coo_array((X, (I,J)), shape=(len(H), np.max(J) + 1)).T
+  return H
 
 def top_weights(simplices: np.ndarray, coeffs: sparray):
   """Computes topological weights from higher-order interaction data."""
@@ -107,3 +107,9 @@ def top_weights(simplices: np.ndarray, coeffs: sparray):
   top_weights = np.zeros(coeffs.shape[0])
   np.add.at(top_weights, coeffs.row, _coeff_weights)
   return top_weights
+
+# def edgelist_to_adjacency(edges: np.ndarray, weights: np.ndarray = None, n: int = None):
+#   weights = np.asarray(weights) if weights is not None else np.ones(len(edges))
+#   assert len(weights) == len(edges), "Invalid weights given; must have one for each edge."
+#   n = np.max(edges) if 
+
