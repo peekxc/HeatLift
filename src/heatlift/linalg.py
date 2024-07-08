@@ -11,76 +11,58 @@ def heat(x: ArrayLike = None, t: float = 1.0, nonnegative: bool = True, compleme
     return np.exp(-x * t) if not complement else 1.0 - np.exp(-x * t)
   return _heat if x is None else _heat(x)
 
-def time_bounds(L, A, bound: str, interval: tuple = (0.0, 1.0), dtype = None):
+def time_bounds(L, A, method: str, interval: tuple = (0.0, 1.0), gap: float = 1e-6, radius: float = 1.0):
   """Returns lower and upper bounds on the time parameter of the heat kernel, based on various heuristics.
   
   The heat kernel (+ its associated invariants) are heavily dependent how the time domain is discretized; 
-  this function returns a 'reasonable' interval of of time to observe the diffusion, based on the supplied heuristic. 
+  this function returns a "reasonable" time interval within which significant diffusion occurs, where 
+  the notion of significance is based on the supplied heuristic. 
 
-  Heuristics include: 
-    absolute = returns [0, t_max], where t_max is the largest t one can expect to have any heat above machine precision.
-    laplacian = uses gerschgorin theorem to bound spectral radius and spectral gap
-    effective = 
-    informative
+  Heuristics which infer a suitable time interval [t_min, t_max] include: 
+    absolute = returns the interval based on the what can be captured by machine precision.
+    bounded = uses gerschgorin-bound on the extremal eigenvalues
+    effective = uses supplied extremal eigenvalues (gap + radius)
+    simple = the heuristic recommended by the HKS paper. 
+  
+  The heuristics 'effective' and 'simple' depend on the supplied 'gap' and 'radius' parameters. The 'bounded' 
+  approach estimates bounds on these values using O(n) matvecs; the 'absolute' only depends on the dtype of L. 
   """
-  # assert len(interval) == 2 and interval[0] >= 0.0 and interval[1] <= 1.0, "If supplied, interval bounds must be in [0,1]"
-  if bound == "absolute":
-    # assert hasattr(self, "laplacian_")
-    # dtype = self.laplacian_.dtype
-    dtype = np.float64 if dtype is None else dtype
-    t_max = -np.log(np.finfo(dtype).eps)/1e-6 # 1e-6 assumed smallest eigenvalue can be found
+  machine_eps = np.finfo(L.dtype).eps
+  if method == "absolute":
+    t_max = -np.log(machine_eps)/machine_eps 
     t_min = 1.0 # since log(0) will be -inf, though this could be go down to 0
     return t_min, t_max
-  elif bound == "laplacian":
-    dtype = L.dtype
+  elif method == "bounded":
+    ## use gerschgorin theorem
     min_ew, max_ew = np.inf, 0.0
-    if np.allclose(L.diagonal(), 1.0):
-      max_ew = 2.0  ## the normalized laplacian is bounded in [0, p+1]
-      min_ew = 1e-6 ## heuristic on spectral gap
-    else:
-      ## use gerschgorin theorem
-      cv = np.zeros(L.shape[0])
-      for i in range(L.shape[0]):
-        cv[i-1], cv[i] = 0, 1
-        row = L @ cv
-        max_ew = max(row[i] + np.sum(np.abs(np.delete(row, i))), max_ew)
-        min_ew = min(row[i] - np.sum(np.abs(np.delete(row, i))), min_ew)
-      min_ew = 1e-6 if min_ew <= 0 else min_ew 
-    l_min = min_ew / np.max(self.mass_matrix_.diagonal())
-    l_max = max_ew / np.min(self.mass_matrix_.diagonal())
+    cv = np.zeros(L.shape[0])
+    for i in range(L.shape[0]):
+      cv[i-1], cv[i] = 0, 1
+      row = L @ cv
+      max_ew = max(row[i] + np.sum(np.abs(np.delete(row, i))), max_ew)
+      min_ew = min(row[i] - np.sum(np.abs(np.delete(row, i))), min_ew)
+    min_ew = gap if min_ew <= 0 else min_ew 
+    l_min = min_ew / np.max(A.diagonal())
+    l_max = max_ew / np.min(A.diagonal())
     t_min = 4 * np.log(10) / l_max
-    t_max = min(4 * np.log(10) / l_min, -np.log(np.finfo(dtype).eps) / min_ew)
+    t_max = min(4 * np.log(10) / l_min, -np.log(machine_eps) / min_ew)
     return t_min, t_max
-  elif bound == "effective":
-    assert hasattr(self, "eigvals_"), "Must call .fit() first!"
-    machine_eps = np.finfo(self.laplacian_.dtype).eps
-    l_min, l_max = np.min(self.eigvals_[~np.isclose(self.eigvals_, 0.0)]), np.max(self.eigvals_)
-    t_max = -np.log(machine_eps)/l_min
-    t_min = -np.log(machine_eps)/(l_max - l_min)
+  elif method == "effective":
+    l_min, l_max = gap, radius
+    t_max = -np.log(machine_eps) / l_min
+    t_min = -np.log(machine_eps) / (l_max - l_min)
+    lmi, lmx = np.log(t_min), np.log(t_max)
+    t_min = np.exp(1) ** (lmi + interval[0] * (lmx - lmi))
+    t_max = np.exp(1) ** (lmi + interval[1] * (lmx - lmi))
     return t_min, t_max
-  elif bound == "informative":
-    assert hasattr(self, "eigvals_"), "Must call .fit() first!"
-    machine_eps = np.finfo(self.laplacian_.dtype).eps
-    # ew = np.sort(self.eigvals_)
-    # l_min, l_max = ew[1], ew[-1]
-    l_min, l_max = np.min(self.eigvals_[~np.isclose(self.eigvals_, 0.0)]), np.max(self.eigvals_)
-    # l_min, l_max = np.quantile(self.eigvals_[1:], interval) ## TODO: revisit, if its a linearly spaced interval use could do themselves
-    t_max = -np.log2(machine_eps) / l_min
-    t_min = -np.log2(machine_eps) / (l_max - l_min)
-    lmi, lmx = np.log2(t_min), np.log2(t_max)
-    t_min = 2.0 ** (lmi + interval[0] * (lmx - lmi))
-    t_max = 2.0 ** (lmi + interval[1] * (lmx - lmi))
-    return t_min, t_max
-  elif bound == "heuristic":
-    assert hasattr(self, "eigvals_"), "Must call .fit() first!"
-    l_min, l_max = np.min(self.eigvals_[~np.isclose(self.eigvals_, 0.0)]), np.max(self.eigvals_) #np.quantile(self.eigvals_, interval)
+  elif method == "simple":
+    l_min, l_max = gap, radius
     t_min = 4 * np.log(10) / l_max
     t_max = 4 * np.log(10) / l_min
     return t_min, t_max
   else: 
-    raise ValueError(f"Unknown time bound method '{bound}' supplied. Must be one ['absolute', 'laplacian', 'effective', 'informative', 'heuristic']")
+    raise ValueError(f"Unknown time bound method '{method}' supplied. Must be one ['absolute', 'gerschgorin', 'effective', 'simple']")
   
-
 
 def timepoint_heuristic(n: int, L: LinearOperator, A: LinearOperator, locality: tuple = (0, 1), **kwargs):
   """Constructs _n_ positive time points equi-distant in log-space for use in the map exp(-t).
