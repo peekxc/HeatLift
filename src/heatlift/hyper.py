@@ -4,7 +4,7 @@ from math import comb, factorial
 from functools import cache, reduce
 from operator import or_
 from scipy.sparse import sparray
-from collections import defaultdict
+from collections import defaultdict, Counter
 # from scipy.special import comb
 from array import array
 from scipy.sparse import coo_array
@@ -61,12 +61,12 @@ def downward_closure(H: list, d: int = 1, coeffs: bool = False):
     MAX_HT_SIZE = int(np.sum(comb(H_sizes, d+1)))
     
     ## Allocate the two output containers
-    S = HashTable(int(MAX_HT_SIZE * 1.20), dtype=(int,d+1))
+    S = HashTable(int(MAX_HT_SIZE * 1.20) + 8, dtype=(int,d+1))
     card_memberships = [array('I') for _ in range(np.max(H_sizes)+1)]
     for he in (he for he in H if len(he) > d):
       d_simplices = he[_combs(len(he), d+1)].T
       s_keys = S.add(d_simplices)
-      card_memberships[len(he)].extend(s_keys)
+      card_memberships[len(he)-1].extend(s_keys)
 
     ## Construct the coauthorship coefficients
     from collections import Counter
@@ -101,12 +101,12 @@ def top_weights(simplices: np.ndarray, coeffs: sparray):
   assert isinstance(coeffs, sparray), "Coefficients must be sparse matrix"
   assert coeffs.shape[0] == len(simplices), "Invalid shape; must have a set of coefficients for each simplex"
   simplices = np.atleast_2d(simplices)
-  n, D = simplices.shape
-  c, d = 1.0 / factorial(D-1), D-1
+  n, N = simplices.shape
+  c, d = 1.0 / factorial(N-1), N-1
   _coeff_weights = c * np.array([p / comb(a, d) for p, a in zip(coeffs.data, coeffs.col)])
   top_weights = np.zeros(coeffs.shape[0])
   np.add.at(top_weights, coeffs.row, _coeff_weights)
-  return top_weights
+  return Counter(dict(zip(map(tuple, simplices), top_weights)))
 
 # def edgelist_to_adjacency(edges: np.ndarray, weights: np.ndarray = None, n: int = None):
 #   weights = np.asarray(weights) if weights is not None else np.ones(len(edges))

@@ -47,4 +47,6 @@ def _cofacet_relation(S, verbose: bool = False) -> bool:
     if verbose and not relation_holds: 
       print(f"simplex {s} weight {s_weight:.3f} != cofacet weight {c_weight:.3f}")
   return relation_holds
+
+# assert _cofacet_relation(weighted_simplex([0,1,2,3]))
 # assert cofacet_relation(S, weights), "Cofacet relation doesn't hold"
