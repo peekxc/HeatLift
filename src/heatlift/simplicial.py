@@ -33,20 +33,36 @@ def weighted_simplex(sigma: tuple) -> dict:
   weights[tuple(sigma)] = 1 / factorial(dim(sigma))
   return Counter(weights)
 
+def unit_simplex(sigma: tuple, c: float = 1.0, closure: bool = False) -> dict:
+  weights = defaultdict(float)
+  if closure: 
+    for f in faces(sigma, proper=True):
+      weights[f] += c
+  weights[tuple(sigma)] = c 
+  return Counter(weights)
+
 ## Ensure the cofacet relations hold; this should hold for all simplices with base weights / "topological weight"
 ## However this breaks as soon as the affinity weights are added 
-def _cofacet_relation(S, verbose: bool = False) -> bool:
+def cofacet_constraint(S: dict, d: int = None, verbose: bool = False) -> bool:
   from simplextree import SimplexTree
   st = SimplexTree(S.keys())
   relation_holds: bool = True
-  for s in st:
+  for s in st.faces(d):
     s_weight = S[s]
-    s_cofacets = [c for c in st.cofaces(s) if dim(c) == dim(s) + 1]
+    s_cofacets = [c for c in st.cofaces(s) if len(c) == len(s) + 1]
     c_weight = np.sum([S[c] for c in s_cofacets])
     relation_holds &= np.isclose(s_weight, c_weight) or len(s_cofacets) == 0
-    if verbose and not relation_holds: 
+    if verbose and (not relation_holds) and len(s_cofacets) > 0: 
       print(f"simplex {s} weight {s_weight:.3f} != cofacet weight {c_weight:.3f}")
   return relation_holds
+
+def coauthorship_constraint(S: dict, v_counts: np.ndarray) -> bool:
+  ## Constraint: the sum of edges of the vertices matches the number of times they appear in the hyper edges 
+  same_weight = np.array([np.isclose(S[(i,)], v_counts[i]) for i in np.arange(len(v_counts))])
+  return np.all(same_weight)
+
+def positivity_constraint(S: dict) -> bool:
+  return np.all([v > 0 for v in S.values()])
 
 # assert _cofacet_relation(weighted_simplex([0,1,2,3]))
 # assert cofacet_relation(S, weights), "Cofacet relation doesn't hold"

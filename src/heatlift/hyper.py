@@ -108,6 +108,15 @@ def top_weights(simplices: np.ndarray, coeffs: sparray):
   np.add.at(top_weights, coeffs.row, _coeff_weights)
   return Counter(dict(zip(map(tuple, simplices), top_weights)))
 
+def vertex_counts(H: list) -> np.ndarray:
+  """Returns the number of times a """
+  N = np.max([np.max(he) for he in normalize_hg(H)])+1
+  v_counts = np.zeros(N)
+  for he in normalize_hg(H):
+    v_counts[he] += 1
+  return v_counts
+
+
 # def edgelist_to_adjacency(edges: np.ndarray, weights: np.ndarray = None, n: int = None):
 #   weights = np.asarray(weights) if weights is not None else np.ones(len(edges))
 #   assert len(weights) == len(edges), "Invalid weights given; must have one for each edge."
