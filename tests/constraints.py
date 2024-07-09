@@ -3,7 +3,6 @@ from collections import Counter
 from heatlift.simplicial import weighted_simplex, unit_simplex, positivity_constraint, cofacet_constraint, coauthorship_constraint
 from heatlift.hyper import vertex_counts
 
-
 def test_constraints():
 
   ## Simple hypergraph

@@ -4,13 +4,6 @@ from typing import Generator, Sized
 from collections import Counter, defaultdict
 from math import comb, factorial
 
-BASE_WEIGHTS = {
-  0: {0: 1},                        # 0-simplex
-  1: {0: 1, 1: 1},                  # 1-simplex
-  2: {0: 1, 1: 1/2, 2: 1/2},        # 2-simplex 
-  3: {0: 1, 1: 1/3, 2: 1/6, 3: 1/6} # 3-simplex
-}
-
 def faces(simplex: tuple, proper: bool = False) -> Generator:
   max_dim = len(simplex) - int(proper)
   faces_gen = (it.combinations(simplex, d) for d in range(1, max_dim+1))
@@ -19,15 +12,22 @@ def faces(simplex: tuple, proper: bool = False) -> Generator:
 def dim(simplex: Sized) -> int:
   return len(simplex) - 1
 
+def base_map(dim: int) -> dict:
+  """Reciprocal of n! / (n - k)! """
+  return Counter({d : 1/(factorial(dim) / factorial(dim-k)) for d, k in enumerate(range(dim+1))})
+
 def weighted_simplex(sigma: tuple) -> dict:
-  """Constructs a dictionary mapping faces of 'sigma' to their base topological weights.
+  """Constructs a dictionary mapping faces of 'sigma' to *topological weights*.
   
-  The resulting simplex->weight mapping obeys the property that every p-simplex's weight 
-  is given by the sum of cofacet weights. Moreover, this relation is preserved under 
-  composition with weight maps constructed from other non-face simplices.
+  The resulting simplex->weight mapping obeys the property that every simplex's weight 
+  is strictly positive and is identical to the sum of its cofacet weights. Moreover, 
+  every vertex weight is equal to the number of times it appears in a maximal face, 
+  and descending order of the weights respect the face poset of the simplex.
+  
+  This relation is preserved under addition non-enclosing simplex->weight mappings.
   """
   weights = defaultdict(float)
-  base_weights = BASE_WEIGHTS[dim(sigma)]
+  base_weights = base_map(dim(sigma))
   for f in faces(sigma, proper=True):
     weights[f] += base_weights[dim(f)]
   weights[tuple(sigma)] = 1 / factorial(dim(sigma))
@@ -63,6 +63,3 @@ def coauthorship_constraint(S: dict, v_counts: np.ndarray) -> bool:
 
 def positivity_constraint(S: dict) -> bool:
   return np.all([v > 0 for v in S.values()])
-
-# assert _cofacet_relation(weighted_simplex([0,1,2,3]))
-# assert cofacet_relation(S, weights), "Cofacet relation doesn't hold"
