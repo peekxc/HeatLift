@@ -38,4 +38,12 @@ def test_basic_hg():
   assert cofacet_constraint(sc_lift, relation=">=")
   assert not cofacet_constraint(sc_lift, relation="==")
 
+def test_downward_closure():
+  from heatlift.hyper import top_weights
+  H = [(0,),(0,1),(1,3),(1,2,3),(0,1,2,3),(0,1,4),(0,1,3),(2,5),(0,2,5),(0,2,4,5)]
+  sc_lift = sum(map(weighted_simplex, H), Counter())
+  for d in range(3):
+    d_map = top_weights(*downward_closure(H, d=d, coeffs=True))
+    assert np.all([np.isclose(sc_lift[s], w) for s,w in d_map.items()])
+
 
