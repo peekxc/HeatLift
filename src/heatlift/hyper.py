@@ -12,7 +12,7 @@ from scipy.sparse import coo_array
 def normalize_hg(H: list):
   """Normalizes a set of hyperedges to a canonical form"""
   V = np.fromiter(reduce(or_, map(set, H)), dtype=int)
-  H = [np.searchsorted(V, np.sort(he).astype(int)) for he in H]
+  H = [np.unique(np.searchsorted(V, np.sort(he).astype(int))) for he in H]
   return H
 
 ## From: https://stackoverflow.com/questions/42138681/faster-numpy-solution-instead-of-itertools-combinations
@@ -48,7 +48,7 @@ def downward_closure(H: list, d: int = 1, coeffs: bool = False):
     for he in H:
       d_simplices = map(tuple, it.combinations(he, d+1)) 
       S.update(d_simplices)
-    S = np.fromiter(iter(S), dtype=(int,d+1))
+    S = np.array(list(S), dtype=(int, (d+1,)))
     S.sort(axis=1)
     # S = S[np.lexsort(np.rot90(S))]
     return S
@@ -66,7 +66,7 @@ def downward_closure(H: list, d: int = 1, coeffs: bool = False):
     for he in (he for he in H if len(he) > d):
       d_simplices = he[_combs(len(he), d+1)].T
       s_keys = S.add(d_simplices)
-      card_memberships[len(he)-1].extend(s_keys)
+      card_memberships[len(he)-1].extend(s_keys.flatten())
 
     ## Construct the coauthorship coefficients
     from collections import Counter
@@ -78,7 +78,7 @@ def downward_closure(H: list, d: int = 1, coeffs: bool = False):
       X.extend(cc.values())
     coeffs = coo_array((X, (I,J)), shape=(len(S), len(card_memberships)))
     coeffs.eliminate_zeros()
-    return S.keys, coeffs 
+    return S.keys.reshape(len(S.keys), d+1), coeffs 
 
 def incidence_to_edges(I: np.ndarray) -> list:
   """Converts an incidence matrix to a list of hyper edges"""

@@ -43,17 +43,18 @@ def unit_simplex(sigma: tuple, c: float = 1.0, closure: bool = False) -> dict:
 
 ## Ensure the cofacet relations hold; this should hold for all simplices with base weights / "topological weight"
 ## However this breaks as soon as the affinity weights are added 
-def cofacet_constraint(S: dict, d: int = None, verbose: bool = False) -> bool:
+def cofacet_constraint(S: dict, d: int = None, relation: str = ">=", verbose: bool = False) -> bool:
   from simplextree import SimplexTree
+  # assert relation in 
   st = SimplexTree(S.keys())
   relation_holds: bool = True
   for s in st.faces(d):
     s_weight = S[s]
     s_cofacets = [c for c in st.cofaces(s) if len(c) == len(s) + 1]
     c_weight = np.sum([S[c] for c in s_cofacets])
-    relation_holds &= np.isclose(s_weight, c_weight) or len(s_cofacets) == 0
+    relation_holds &= eval(f"s_weight {relation} c_weight") or np.isclose(s_weight, c_weight) or len(s_cofacets) == 0
     if verbose and (not relation_holds) and len(s_cofacets) > 0: 
-      print(f"simplex {s} weight {s_weight:.3f} != cofacet weight {c_weight:.3f}")
+      print(f"simplex {s} weight {s_weight:.3f} !({relation}) cofacet weight {c_weight:.3f}")
   return relation_holds
 
 def coauthorship_constraint(S: dict, v_counts: np.ndarray) -> bool:

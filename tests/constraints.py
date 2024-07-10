@@ -1,7 +1,7 @@
 import numpy as np
 from collections import Counter
 from heatlift.simplicial import weighted_simplex, unit_simplex, positivity_constraint, cofacet_constraint, coauthorship_constraint
-from heatlift.hyper import vertex_counts
+from heatlift.hyper import vertex_counts, top_weights, downward_closure
 
 def test_constraints():
 
@@ -13,7 +13,6 @@ def test_constraints():
   assert positivity_constraint(weights)
   assert coauthorship_constraint(weights, vertex_counts(H))
   assert cofacet_constraint(weights)
-  assert cofacet_constraint(weights, d=0) # vertex/edge only
 
   ## Respects the vertex/edge constraint, positivity, and coauthorship constraints
   ## Breaks the cofacet constraint
@@ -21,11 +20,22 @@ def test_constraints():
   weights = sum(map(weighted_simplex, H), Counter())
   assert positivity_constraint(weights)
   assert coauthorship_constraint(weights, vertex_counts(H))
-  assert not cofacet_constraint(weights)
-  assert cofacet_constraint(weights, d=0) # vertex/edge only
+  assert cofacet_constraint(weights, relation=">=")
+  assert not cofacet_constraint(weights, relation="==")
 
   ## Test (trivial) reconstruction with known maximal simplices
   weights = sum(map(weighted_simplex, H[:2]), Counter())
   weights += unit_simplex(H[2])
   H_recon = weights - sum(map(weighted_simplex, H[:2]), Counter())
   assert H_recon == unit_simplex(H[2])
+
+def test_basic_hg():
+  H = [(0,),(0,1),(1,3),(1,2,3),(0,1,2,3),(0,1,4),(0,1,3),(2,5),(0,2,5),(0,2,4,5)]
+  sc_lift = sum(map(weighted_simplex, H), Counter())
+  assert positivity_constraint(sc_lift)
+  assert coauthorship_constraint(sc_lift, vertex_counts(H))
+  assert cofacet_constraint(sc_lift, d=0, relation=">=")
+  assert cofacet_constraint(sc_lift, relation=">=")
+  assert not cofacet_constraint(sc_lift, relation="==")
+
+
