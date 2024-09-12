@@ -3,6 +3,7 @@ import itertools as it
 from typing import Generator, Sized
 from collections import Counter, defaultdict
 from math import comb, factorial
+from scipy.sparse import sparray, coo_array
 
 def faces(simplex: tuple, proper: bool = False) -> Generator:
   max_dim = len(simplex) - int(proper)
@@ -15,6 +16,23 @@ def dim(simplex: Sized) -> int:
 def base_map(dim: int) -> dict:
   """Reciprocal of n! / (n - k)! """
   return Counter({d : 1/(factorial(dim) / factorial(dim-k)) for d, k in enumerate(range(dim+1))})
+
+# def boundary_matrix(p: int, p_simplices: np.ndarray, f_simplices: np.ndarray = [], dtype=np.int16, n: int = None):
+#   """
+#   p = dimension of the p-simplices
+#   p_simplices = colex ranks of the p-simplices
+#   f_simplices = colex ranks of the (p-1)-simplices
+#   """
+#   if p <= 0: 
+#     return coo_array((0, len(p_simplices)), dtype=dtype)
+#   card_p, card_f = len(p_simplices), len(f_simplices)
+#   if card_p == 0 or card_f == 0: 
+#     return coo_array((card_f, card_p), dtype=dtype)
+#   n = np.max(rank_to_comb(np.max(p_simplices), order='colex', k=p+1)) + 1 if n is None else n
+#   d, (ri,ci) = clique_mod.build_coo(n, p, p_simplices, f_simplices)
+#   D = coo_matrix((d, (ri,ci)), shape=(card_f, card_p), dtype=dtype)
+#   return D
+
 
 def weighted_simplex(sigma: tuple) -> dict:
   """Constructs a dictionary mapping faces of 'sigma' to *topological weights*.

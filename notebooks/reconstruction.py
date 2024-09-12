@@ -1,28 +1,34 @@
-from collections import defaultdict
 import numpy as np
 import itertools as it
 from math import factorial
-from notebooks.simple import top_weights
 from simplextree import SimplexTree
-from heatlift.simplicial import weighted_simplex
-from collections import Counter
+from collections import Counter, defaultdict
 
-from src.heatlift.hyper import normalize_hg
+from heatlift.simplicial import coauthorship_constraint, positivity_constraint, weighted_simplex, unit_simplex, cofacet_constraint
+from heatlift.hyper import normalize_hg, vertex_counts
 
 ## Hypergraph to encode as simplicial complex
-H = [(0,),(0,1),(1,3),(1,2,3),(0,1,2,3),(0,1,4),(0,1,3),(0,)] # ,(2,5),(0,2,5), (0,2,4,5)
+H = [(0,),(0,1),(1,3),(1,2,3),(0,1,2,3),(0,1,4),(0,1,3)] # ,(2,5),(0,2,5), (0,2,4,5)
 
 ## Induce simplicial complex via downward closure
 S = SimplexTree(H)
 
+vc = vertex_counts(H)
+coauthorship_constraint(sum(map(weighted_simplex, H), Counter()), vc)
+
+## Encodes hypergraph into weighted simplicial complex 
+weights = sum(map(weighted_simplex, S.maximal()), Counter())
+aff_weights = sum([unit_simplex(h) for h in H if h], Counter())
+weights += aff_weights
+
+## Decodes weighted simplicial complex into hypergraph 
+weights - sum(map(weighted_simplex, S.maximal()), Counter())
+
 ## Construct weight mapping using maximal simplices
-weights = sum(map(weighted_simplex, H), Counter())
+weights = sum(map(weighted_simplex, H), Counter()) # Respects vertex requirement + positivity, but nothing else
 
-max_weights = sum(map(weighted_simplex, SimplexTree(weights.keys()).maximal()), Counter())
-sum(map(weighted_simplex, weights.keys()), Counter())
-
-weights = weighted_simplex([0,1,2]) + weighted_simplex([0,1])
-weights - weighted_simplex([0,1,2])
+# max_weights = sum(map(weighted_simplex, SimplexTree(weights.keys()).maximal()), Counter())
+# sum(map(weighted_simplex, weights.keys()), Counter())
 
 
 # weights - sum(map(weighted_simplex, weights.keys()), Counter())
@@ -39,13 +45,7 @@ list(faces((0,1)))
 HE = weights - sum(map(weighted_simplex, S.maximal()), Counter())
 assert list(sorted(HE.keys())) == list(sorted(set(H)))
 
-## Constraint: the sum of edges of the vertices matches the number of times they appear in the hyper edges 
-N = np.max([np.max(he) for he in normalize_hg(H)])+1
-v_counts = np.zeros(N)
-for he in normalize_hg(H):
-  v_counts[he] += 1
-v_weights = np.array([weights[(i,)] for i in range(N)])
-np.allclose(v_weights, v_counts)
+
 
 ## Problem: can't construct the full induced complex; it's too large! 
 ## Can we instead construct, from the hyperedges alone, a weighted d-skeleton?

@@ -78,6 +78,11 @@ T_weights_true = np.loadtxt("https://raw.githubusercontent.com/DedeBac/WeightedS
 # np.searchsorted(node_ids, T_weights_true[:,:3])
 assert np.allclose(T_weights, T_weights_true[:,3])
 
+TW = coo_array(np.c_[np.zeros(shape=(len(T), 3)), T_author_card.todense()])
+# TW = coo_array(np.c_[np.zeros(len(T)), TW.todense()])
+T_weights[0]
+top_weights(T, TW)[(96, 233, 345)]
+
 
 ## Triangle weights (from eq. 65, though only restricts to the 2-skeleton)
 c, d = 1.0 / factorial(2), 2
@@ -106,6 +111,11 @@ node_weights = np.array([np.sum([EW_map[tuple(e)] for e in st.cofaces([n]) if le
 # np.array([np.sum([W_map[tuple(s)] for s in st.cofaces([n])]) for n in st.vertices])
 
 # np.searchsorted(node_ids, E_weights_true[:,:2])
+from toponetx.classes.simplicial_complex import SimplicialComplex
+from toponetx.classes.colored_hypergraph import ColoredHyperGraph
+HG = ColoredHyperGraph(H)
+SC = SimplicialComplex(S.keys())
+toponetx.simplicial_complex_hodge_laplacian_spectrum?
 
 st = SimplexTree([[n] for n in N])
 st.insert(E)
